@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+	    <script src="https://cdn.jsdelivr.net/phaser/2.4.6/phaser.min.js"></script>
+    <style> 
+        body{
+            margin: 0; 
+            background: #333; 
+            margin-top:18px;
+            margin-left: 25%;
+            margin-right: 25%;
+        } 
+    </style>
+</head>
+<body>
+	<script>
+var game = new Phaser.Game(400, 800, Phaser.CANVAS, 'phaser-example', { preload: preload, create: create, update: update, render: render });
+
+function preload() {
+
+    game.load.tilemap('World1', 'assets/tilemaps/maps/World1.json', null, Phaser.Tilemap.TILED_JSON);
+    //  Next we load the tileset. This is just an image, loaded in via the normal way we load images:
+    game.load.image('tiles', 'assets/tilemaps/tiles/super_mario.png');
+    game.load.spritesheet('player', 'assets/sprites/dude2.png',32, 48);
+    game.load.image('star', 'assets/sprites/stone.png');
+}
+
+
+        
+var map;
+var layer;
+var p;
+var cursors;
+var stars;
+var score = 0;
+var scoreText;
+        
+function create() {
+
+    game.physics.startSystem(Phaser.Physics.ARCADE);
+
+    game.stage.backgroundColor = '#787878';
+
+    map = game.add.tilemap('World1');
+
+    map.addTilesetImage('World1', 'tiles');
+
+    //  14 = ? block
+    map.setCollisionBetween(581, 583); 
+    map.setCollisionBetween(637, 691);     
+    map.setCollisionBetween(875, 876);
+    map.setCollision(40);
+    
+    World1 = map.createLayer('World1');
+
+    //  Un-comment this on to see the collision tiles
+    // layer.debug = true;
+
+    layer = map.createLayer('World1');
+    layer.resizeWorld();
+    p = game.add.sprite(60, 0, 'player');
+
+    game.physics.enable(p);
+
+    game.physics.arcade.gravity.y = 350;
+
+    p.body.bounce.y = 0.2;
+    p.body.linearDamping = 1;
+    p.body.collideWorldBounds = true;
+    p.body.checkCollision.up = false;
+    p.body.checkCollision.left = false;
+    p.body.checkCollision.right = false;
+
+	p.animations.add('left', [0, 1, 2, 3], 10, true);
+    p.animations.add('right', [5, 6, 7, 8], 10, true);
+
+    game.camera.follow(p, Phaser.Camera.FOLLOW_PLATFORMER);
+    
+    cursors = game.input.keyboard.createCursorKeys();
+   
+        //  Finally some stars to collect
+    stars = game.add.group();
+
+    //  We will enable physics for any star that is created in this group
+    stars.enableBody = true;
+    
+    //  Here we'll create 12 of them evenly spaced apart
+    for (var i = 0; i < 6; i++)
+    {
+        //  Create a star inside of the 'stars' group
+        var star = stars.create(i * 70, 2000, 'star');
+
+        //  Let gravity do its thing
+        star.body.gravity.y = 300;
+
+        //  This just gives each star a slightly random bounce value
+         star.body.bounce.y = 0.7 + Math.random() * 0.2;
+        
+        
+    }
+
+    //  The score
+    scoreText = game.add.text(16, 16, 'score: 0', { fontSize: '32px', fill: '#000' });
+    
+    emitter = game.add.emitter(0, 0, 100);
+
+    emitter.makeParticles('star');
+    emitter.gravity = 200;
+
+    //game.input.onDown.addOnce(particleBurst, this);
+
+}
+        
+function particleBurst() {
+
+    emitter.x = p.x;
+    emitter.y = p.y+48;
+    emitter.width = 10;
+    emitter.start(true, 4000, null, 10);
+
+    //  And 2 seconds later we'll destroy the emitter
+    game.time.events.add(2000, destroyEmitter, this);
+
+}
+
+function destroyEmitter() {
+
+    //emitter.destroy();
+
+}
+function update() {
+    
+    game.physics.arcade.collide(stars, layer);
+
+    game.physics.arcade.collide(p, layer);
+    
+    game.physics.arcade.overlap(p, stars, collectStar, null, this);
+    
+    p.body.velocity.x = 0;
+
+if (cursors.up.isDown)
+    {
+        if (p.body.onFloor())
+        {
+            p.body.velocity.y = -250;           
+            particleBurst();
+        }
+    }
+
+	if (cursors.left.isDown)
+        {
+            //  Move to the left
+            p.body.velocity.x = -150;
+
+            p.animations.play('left');
+        }
+        else if (cursors.right.isDown)
+        {
+            //  Move to the right
+            p.body.velocity.x = 150;
+
+            p.animations.play('right');
+        }
+        else
+        {
+            //  Stand still
+            p.animations.stop();
+
+            p.frame = 4;
+        }
+
+
+}
+
+function collectStar (p, star) {
+    
+    // Removes the star from the screen
+    star.kill();
+
+    //  Add and update the score
+    score += 10;
+    scoreText.text = 'Score: ' + score;
+
+}
+        
+function render() {
+
+   //game.debug.body(p);
+    
+
+}
+	</script>
+</body>
+</html>
