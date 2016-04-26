@@ -49,7 +49,7 @@ var Game = {
     
     this.createMap();   
     music = game.sound.play('boden');
-    music.stop();
+    //music.stop();
     this.coinSound = game.add.audio('coin', 0.1);
     this.jumpSound = game.add.audio('jump', 0.1);
     this.deadSound = game.add.audio('dead', 0.1);
