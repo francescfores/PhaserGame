@@ -3,28 +3,35 @@
 <head>
 	<meta charset="UTF-8">
 	<title>Document</title>
-	    <script src="https://cdn.jsdelivr.net/phaser/2.4.6/phaser.min.js"></script>
+	    <script src="assets/js/phaser.min.js"></script>
+
+    <script src="assets/js/menu.js"></script>
+    <script src="assets/js/game.js"></script>
+    <script src="assets/js/game2.js"></script>
+    <script src="assets/js/game_over.js"></script>
+    <script src="assets/js/main.js"></script>
+
     <style> 
         body{
             margin: 0; 
             background: #333; 
-            margin-top:18px;
-            margin-left: 25%;
-            margin-right: 25%;
         } 
     </style>
 </head>
-<body>
-	<script>
+<body><!--
+<script>
 var game = new Phaser.Game(400, 800, Phaser.CANVAS, 'phaser-example', { preload: preload, create: create, update: update, render: render });
 
 function preload() {
-
     game.load.tilemap('World1', 'assets/tilemaps/maps/World1.json', null, Phaser.Tilemap.TILED_JSON);
     //  Next we load the tileset. This is just an image, loaded in via the normal way we load images:
     game.load.image('tiles', 'assets/tilemaps/tiles/super_mario.png');
-    game.load.spritesheet('player', 'assets/sprites/dude2.png',32, 48);
+    game.load.spritesheet('player', 'assets/sprites/wario3.png',40, 40);
+    game.load.spritesheet('enemies', 'assets/sprites/dude.png',32, 48);
+    game.load.spritesheet('bulletBill', 'assets/sprites/bulletBill2.png',32, 48);
+    game.load.spritesheet('door', 'assets/sprites/door.png',79, 92);
     game.load.image('star', 'assets/sprites/stone.png');
+    game.load.spritesheet('coin', 'assets/sprites/coin.png', 32, 32);
 }
 
 
@@ -36,84 +43,104 @@ var cursors;
 var stars;
 var score = 0;
 var scoreText;
-        
-function create() {
+var lives = 6;  
+var livesText;
+var aliens;
+var y = 2400;
+var pos = 0;      
+var jumpButton;
+var jumpTimer = 0;
 
-    game.physics.startSystem(Phaser.Physics.ARCADE);
-
-    game.stage.backgroundColor = '#787878';
-
-    map = game.add.tilemap('World1');
-
-    map.addTilesetImage('World1', 'tiles');
-
-    //  14 = ? block
-    map.setCollisionBetween(581, 583); 
-    map.setCollisionBetween(637, 691);     
-    map.setCollisionBetween(875, 876);
-    map.setCollision(40);
+function create() {    
+      
+    createMap();
+    createCoins();   
+    createEnemies();   
+    createPlayer();
     
-    World1 = map.createLayer('World1');
+    game.camera.follow(p, Phaser.Camera.FOLLOW_PLATFORMER);    
+    cursors = game.input.keyboard.createCursorKeys();  
+    jumpButton = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
 
-    //  Un-comment this on to see the collision tiles
-    // layer.debug = true;
+    //  The score
+    scoreText = game.add.text(16, 16, 'score: 0', { fontSize: '32px', fill: '#000' });
+    scoreText.fixedToCamera = true;
+   
+    //  The lives
+    livesText =  game.add.text(game.world.width - 120, 16, 'lives : ' + lives, { fontSize: '32px', fill: '#000' });
+    livesText.fixedToCamera = true;    
+}  
 
+function createMap(){
+    game.physics.startSystem(Phaser.Physics.ARCADE);
+    game.physics.arcade.gravity.y = 300;
+    game.stage.backgroundColor = '#787878';
+    map = game.add.tilemap('World1');
+    map.addTilesetImage('World1', 'tiles');
+    map.setCollisionBetween(581, 583);   
+    map.setCollisionBetween(875, 876);
+    map.setCollision(637);  
+    map.setCollision(40);       
     layer = map.createLayer('World1');
     layer.resizeWorld();
-    p = game.add.sprite(60, 0, 'player');
+}
 
-    game.physics.enable(p);
-
-    game.physics.arcade.gravity.y = 350;
-
-    p.body.bounce.y = 0.2;
-    p.body.linearDamping = 1;
+function createPlayer(){
+    p = game.add.sprite(layer.centerX, 0/*game.camera.bounds.height*/, 'player');    
+    game.physics.enable(p, Phaser.Physics.ARCADE);
+    p.body.collideWorldBounds = true;
+    p.body.gravity.y = 1000;
+    p.body.maxVelocity.y = 500;
     p.body.collideWorldBounds = true;
     p.body.checkCollision.up = false;
     p.body.checkCollision.left = false;
     p.body.checkCollision.right = false;
-
-	p.animations.add('left', [0, 1, 2, 3], 10, true);
-    p.animations.add('right', [5, 6, 7, 8], 10, true);
-
-    game.camera.follow(p, Phaser.Camera.FOLLOW_PLATFORMER);
-    
-    cursors = game.input.keyboard.createCursorKeys();
+    p.animations.add('left', [0, 1, 2, 3 ,4], 10, true);
+    p.animations.add('right', [5, 6, 7, 8, 9], 10, true);
+    playerDead = false;
+}
+function createEnemies(){
+    enemies = game.add.group();
+    enemies.enableBody = true;
+    game.physics.enable(enemies);
+    map.createFromObjects('Object Layer 2', 1361, 'enemies', 0, true, false, enemies);
+    enemies.callAll('animations.add', 'animations', 'spin', [0, 1, 2, 3, 4, 5], 10, true);
+    enemies.callAll('animations.play', 'animations', 'spin');
    
-        //  Finally some stars to collect
-    stars = game.add.group();
+    bullet = game.add.group();
+    bullet.enableBody = true;
 
-    //  We will enable physics for any star that is created in this group
-    stars.enableBody = true;
-    
-    //  Here we'll create 12 of them evenly spaced apart
-    for (var i = 0; i < 6; i++)
-    {
-        //  Create a star inside of the 'stars' group
-        var star = stars.create(i * 70, 2000, 'star');
+    map.createFromObjects('Object Layer 2', 1360, 'bulletBill', 0, true, false, bullet);
+    for (i = 0; i < bullet.length; i++){
+        game.physics.enable(bullet.children[i]);
+        bullet.children[i].body.allowGravity = false;  
 
-        //  Let gravity do its thing
-        star.body.gravity.y = 300;
-
-        //  This just gives each star a slightly random bounce value
-         star.body.bounce.y = 0.7 + Math.random() * 0.2;
-        
-        
+        bullet.children[i].body.checkCollision.up = true;
+        bullet.children[i].body.checkCollision.left = false;
+        bullet.children[i].body.checkCollision.right = false;
+        bullet.children[i].body.checkCollision.down = false;        
     }
 
-    //  The score
-    scoreText = game.add.text(16, 16, 'score: 0', { fontSize: '32px', fill: '#000' });
-    
-    emitter = game.add.emitter(0, 0, 100);
-
-    emitter.makeParticles('star');
-    emitter.gravity = 200;
-
-    //game.input.onDown.addOnce(particleBurst, this);
-
+    door = game.add.group();
+    door.enableBody = true;
+    game.physics.enable(door);
+    map.createFromObjects('Object Layer 3', 1359, 'door', 0, true, false, door);
 }
-        
-function particleBurst() {
+
+function moveBullet() {
+
+} 
+function createCoins(){
+    coins = game.add.group();
+    coins.enableBody = true;
+    //  And now we convert all of the Tiled objects with an ID of 34 into sprites within the coins group
+    map.createFromObjects('Object Layer 1', 1351, 'coin', 0, true, false, coins);
+    //  Add animations to all of the coin sprites
+    coins.callAll('animations.add', 'animations', 'spin', [0, 1, 2, 3, 4, 5], 10, true);
+    coins.callAll('animations.play', 'animations', 'spin');
+    }
+
+/*function particleBurst() {
 
     emitter.x = p.x;
     emitter.y = p.y+48;
@@ -124,30 +151,31 @@ function particleBurst() {
     game.time.events.add(2000, destroyEmitter, this);
 
 }
-
-function destroyEmitter() {
-
-    //emitter.destroy();
-
-}
+*/
+var count = 800;  
 function update() {
-    
-    game.physics.arcade.collide(stars, layer);
-
     game.physics.arcade.collide(p, layer);
-    
-    game.physics.arcade.overlap(p, stars, collectStar, null, this);
-    
+    game.physics.arcade.collide(door, layer);
+    game.physics.arcade.collide(coins, layer);
+    game.physics.arcade.collide(bullet, layer);
+    game.physics.arcade.overlap(p, coins, collectCoin, null, this);
+    game.physics.arcade.overlap(p, door, nextLevel, null, this);
+    game.physics.arcade.collide(p, bullet, killBullet, null, this);
+    game.physics.arcade.overlap(p, bullet, collectBullet, null, this);     
     p.body.velocity.x = 0;
+    
 
-if (cursors.up.isDown)
-    {
-        if (p.body.onFloor())
-        {
-            p.body.velocity.y = -250;           
-            particleBurst();
-        }
+    camPos = (game.camera.bounds.height - game.camera.y ) - game.height ;
+    spritePos = game.camera.bounds.height - p.y;
+    
+    if(game.camera.bounds.height - p.y >= count){       
+        game.camera.deadzone = new Phaser.Rectangle(100, 100, 600, count);       
     }
+    
+    if(camPos >= spritePos){
+         console.log('eeep');
+         p.body.velocity.y = -950;      
+     }
 
 	if (cursors.left.isDown)
         {
@@ -171,26 +199,75 @@ if (cursors.up.isDown)
             p.frame = 4;
         }
 
+        if (jumpButton.isDown && p.body.onFloor() && game.time.now > jumpTimer)
+    {
+        p.body.velocity.y = -500;
+        jumpTimer = game.time.now + 750;
+
+    }
+
+    for (i = 0; i < bullet.length; i++){
+       
+        game.physics.arcade.collide(p, bullet.children[i]);
+        if(bullet.children[i].world.x >=  game.width){
+             bullet.children[i].x = -14;
+             
+        }else{
+            bullet.children[i].x += 2;
+        }
+         
+        }
+
 
 }
+function killBullet (player, bullet) { 
+    shakeEffect(bullet);
+    bullet.kill();
+    score += 10;
+    scoreText.text = 'Score: ' + score;
+}
+function collectBullet(player, bullet) {    
+    //player.kill();
+    player.x = 0;
+    player.y = game.camera.bounds.height - 100;
+    lives -= 1;
+    livesText.text = 'Lives : ' + lives;
+}
+function nextLevel (player, bullet) {    
+    console.log("next level");
+}
+function shakeEffect(g) {
+        var move = 5;
+        var time = 20;
 
-function collectStar (p, star) {
-    
-    // Removes the star from the screen
-    star.kill();
+        game.add.tween(g)
+                .to({y:"-"+move}, time).to({y:"+"+move*2}, time*2).to({y:"-"+move}, time)
+                .to({y:"-"+move}, time).to({y:"+"+move*2}, time*2).to({y:"-"+move}, time)
+                .to({y:"-"+move/2}, time).to({y:"+"+move}, time*2).to({y:"-"+move/2}, time)
+                .start();
 
-    //  Add and update the score
+        game.add.tween(g)
+                .to({x:"-"+move}, time).to({x:"+"+move*2}, time*2).to({x:"-"+move}, time)
+                .to({x:"-"+move}, time).to({x:"+"+move*2}, time*2).to({x:"-"+move}, time)
+                .to({x:"-"+move/2}, time).to({x:"+"+move}, time*2).to({x:"-"+move/2}, time)
+                .start();
+    }
+
+function collectCoin(player, coin) {
+    //console.log(coin);
+    coin.kill();
     score += 10;
     scoreText.text = 'Score: ' + score;
 
 }
-        
 function render() {
 
    //game.debug.body(p);
-    
+   //game.debug.spriteInfo(p, 32, 32);
+   game.debug.cameraInfo(game.camera, 32, 32);
+    game.debug.bodyInfo(p, 32, 320);
 
 }
-	</script>
+	</script>-->
 </body>
 </html>
