@@ -83,7 +83,15 @@ function createMap(){
     map.setCollision(40);       
     layer = map.createLayer('World1');
     layer.resizeWorld();
+<<<<<<< HEAD
 }
+=======
+    p = game.add.sprite(60, 2000, 'player');
+
+    game.physics.enable(p);
+
+    game.physics.arcade.gravity.y = 350;
+>>>>>>> d6fc5c15fcfcb057a52ccbdc91cbc13a9b7c0d86
 
 function createPlayer(){
     p = game.add.sprite(layer.centerX, 0/*game.camera.bounds.height*/, 'player');    
